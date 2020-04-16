@@ -1,17 +1,34 @@
 from controller import Compass, Robot, DistanceSensor, Motor
 import math
+import sys
 import re
 
 class Optimizer:
     def __init__(self):
+        self.counter = -1
         self.filePath = "./data.txt"
         self.file = self.read_in()
         self.data = []
         if self.doesFileExist():
             temp = self.file.readlines()
-            for l in temp:
-                self.data.append(l.strip('\n'))
 
+            #Read in each line as a list of floats
+            for l in temp:
+                d = l.strip('\n').split(',')
+                for i in range(0, len(d)):
+                    d[i] = float(d[i])
+                self.data.append(d)
+
+            #Check each point (from start) against
+            #each point (from end) for loops
+            for i in range(0, len(self.data)-1):
+                for j in range(len(self.data)-1, i+5, -1):
+                    if not self.checkPoints(i, j):
+                        i = 0
+                        j = len(self.data)-1
+            print('File Opened and Processed')
+
+    #Open file
     def read_in(self):
         try:
             file = open(self.filePath, "r")
@@ -20,27 +37,38 @@ class Optimizer:
             file = 0
         return file
 
+    #Get next motor values, iterate
+    def getNextMotorValues(self):
+        self.counter += 1
+        if self.counter == len(self.data):
+            return False
+        return [float(self.data[self.counter][2]), float(self.data[self.counter][3])]
+
+    #Check if there's a file
     def doesFileExist(self):
         return not self.file == 0
 
-    def addData(self, data):
-        self.data.append(data)
-
+    #See if distance between two points is acceptable
+    #If not, delete detected loop and restart search
     def checkPoints(self, start, end):
-        pass
+        p1 = self.data[start][:2]
+        p2 = self.data[end][:2]
+        x = p1[0] - p2[0]
+        y = p1[1] - p2[1]
+        dist = math.sqrt((x * x) - (y * y))
+        if dist < 3:
+            self.data = self.data[:start]+self.data[end:]
+            return False
+        else:
+            return True
 
-    def writeData(self):
-        with open(self.filePath, "w") as f:
-            for d in self.data:
-                self.file.write("%s\n" % d)
-            f.close()
-
-    def writeData(self, data):
+    #Append a line of data to the file
+    def writeData(self, pos, l, r):
         with open(self.filePath, "a") as f:
-            f.write("%s\n" % data)
+            f.write("%.4f,%.4f,%.3f,%.3f\n" % (pos[0], pos[1], l, r))
             f.close()
 
-# time in [ms] of a simulation step
+#Time in [ms] of a simulation step
 TIME_STEP = 64
 
 MAX_SPEED = 6.28
@@ -106,10 +134,12 @@ def turn(rob, c, l, r, direction):
             l.setVelocity(MAX_SPEED)
             r.setVelocity(-1 * MAX_SPEED)
 
+#Create Optimizer instance
 opt = Optimizer()
 write = not opt.doesFileExist()
+#print(opt.data)
 
-# create the Robot instance.
+#Create the Robot instance
 robot = Robot()
 
 com = robot.getCompass('compass')
@@ -120,7 +150,7 @@ acc.enable(TIME_STEP)
 
 currentPos = [0, 0]
 
-# initialize devices
+#Initialize devices
 ps = []
 psNames = [
     'ps0', 'ps1', 'ps2', 'ps3',
@@ -138,25 +168,42 @@ rightMotor.setPosition(float('inf'))
 leftMotor.setVelocity(0.0)
 rightMotor.setVelocity(0.0)
 
-# feedback loop: step simulation until receiving an exit event
+#Feedback loop: step simulation until receiving an exit event
 while robot.step(TIME_STEP) != -1:
-    # read sensors outputs
+    #Read sensors outputs
     psValues = []
     for i in range(8):
         psValues.append(ps[i].getValue())
     
-    # detect obstacles
+    #Detect obstacles
     right_obstacle = psValues[0] > DETECT_VAL or psValues[1] > DETECT_VAL or psValues[2] > DETECT_VAL
     left_obstacle = psValues[5] > DETECT_VAL or psValues[6] > DETECT_VAL or psValues[7] > DETECT_VAL
-
     front_obstacle = psValues[7] > DETECT_VAL and psValues[0] > DETECT_VAL
 
     right_path = psValues[2] < 63.0
     left_path = psValues[5] < 63.0
 
+    if front_obstacle:
+        turn(robot, com, leftMotor, rightMotor, 2)
+
+    #Initialize motor speeds at 50% of MAX_SPEED.
+    leftSpeed  = 0.5 * MAX_SPEED
+    rightSpeed = 0.5 * MAX_SPEED
+    
+    #Modify speeds according to obstacles
+    if left_obstacle:
+        
+        #Turn right
+        leftSpeed  += 0.05 * MAX_SPEED
+        rightSpeed -= 0.05 * MAX_SPEED
+    elif right_obstacle:
+        
+        #Turn left
+        leftSpeed  -= 0.05 * MAX_SPEED
+        rightSpeed += 0.05 * MAX_SPEED
+
     #Calculate current position
     #SENSITIVE TO GETTING STUCK, LEADS TO DRIFT
-    print(write)
     if write:
         delta = acc.getValues()
         delta = [delta[0], delta[2]]
@@ -165,24 +212,17 @@ while robot.step(TIME_STEP) != -1:
             delta = rotate(delta, angle)
             currentPos[0] += (delta[0]/10)
             currentPos[1] += (delta[1]/10)
-            #print(currentPos)
-            opt.writeData(currentPos)
+            opt.writeData(currentPos, leftSpeed, rightSpeed)
 
-    if front_obstacle:
-        turn(robot, com, leftMotor, rightMotor, 2)
-
-    # initialize motor speeds at 50% of MAX_SPEED.
-    leftSpeed  = 0.5 * MAX_SPEED
-    rightSpeed = 0.5 * MAX_SPEED
-    # modify speeds according to obstacles
-    if left_obstacle:
-        # turn right
-        leftSpeed  += 0.05 * MAX_SPEED
-        rightSpeed -= 0.05 * MAX_SPEED
-    elif right_obstacle:
-        # turn left
-        leftSpeed  -= 0.05 * MAX_SPEED
-        rightSpeed += 0.05 * MAX_SPEED
-    # write actuators inputs
-    leftMotor.setVelocity(leftSpeed)
-    rightMotor.setVelocity(rightSpeed)
+    #Write actuators inputs
+    #If writing to file,
+    if write:
+        leftMotor.setVelocity(leftSpeed)
+        rightMotor.setVelocity(rightSpeed)
+    #If reading from file,
+    else:
+        motorValues = opt.getNextMotorValues()
+        if motorValues == False:
+            sys.exit("Ran out of motor values")
+        leftMotor.setVelocity(motorValues[0])
+        rightMotor.setVelocity(motorValues[1])
