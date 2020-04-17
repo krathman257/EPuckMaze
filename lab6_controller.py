@@ -21,11 +21,17 @@ class Optimizer:
 
             #Check each point (from start) against
             #each point (from end) for loops
-            for i in range(0, len(self.data)-1):
-                for j in range(len(self.data)-1, i+5, -1):
+            i = 0
+            j = len(self.data) - 1
+            while i < len(self.data)-1:
+                while j > i+5:
                     if not self.checkPoints(i, j):
                         i = 0
                         j = len(self.data)-1
+                    else:
+                        j -= 1
+                i += 1
+                j = len(self.data)-1
             print('File Opened and Processed')
 
     #Open file
@@ -55,8 +61,9 @@ class Optimizer:
         p2 = self.data[end][:2]
         x = p1[0] - p2[0]
         y = p1[1] - p2[1]
-        dist = math.sqrt((x * x) - (y * y))
-        if dist < 3:
+        dist = math.sqrt(abs((x * x) - (y * y)))
+        if dist < 5:
+            #print("Loop Detected: ",start,", ",end)
             self.data = self.data[:start]+self.data[end:]
             return False
         else:
@@ -87,13 +94,13 @@ def rotate(vector, angle):
 #angle = float, direction = cardinal direction
 def isStraight(angle, direction):
     if direction == 'N':
-        return angle > 85 and angle < 95
+        return angle > 80 and angle < 100
     elif direction == 'E':
-        return angle > 175 or angle < -175
+        return angle > 170 or angle < -170
     elif direction == 'S':
-        return angle > -95 and angle < -85
+        return angle > -100 and angle < -80
     elif direction == 'W':
-        return angle > -5 and angle < 5
+        return angle > -10 and angle < 10
     else:
         print("Incorrection direction")
 
