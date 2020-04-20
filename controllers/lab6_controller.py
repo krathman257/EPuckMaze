@@ -86,7 +86,9 @@ MAX_SPEED = 6.28
 
 DETECT_VAL = 100.0
 
-TURN_DELAY = 15
+TURN_DELAY = 30
+
+OFFSET = 0.05
 
 #Rotate 2D vector
 def rotate(vector, angle):
@@ -243,6 +245,14 @@ while robot.step(TIME_STEP) != -1:
             if turnDelay == 0:
                 turn(robot, com, leftMotor, rightMotor, -1)
                 turnDelay = TURN_DELAY
+        if  (psValues[5] < DETECT_VAL and psValues[6] < DETECT_VAL and psValues[7] < DETECT_VAL):
+            #if a gap is detected on the left,
+            #then turn left
+
+            turnDelay -= 1
+            if turnDelay == 0:
+                turn(robot, com, leftMotor, rightMotor, -1)
+                turnDelay = TURN_DELAY
 
 
 
@@ -252,11 +262,14 @@ while robot.step(TIME_STEP) != -1:
 
     #force robot to tend toward left
     #hug left wall
-    if not left_obstacle:
+    if (not left_obstacle) or right_obstacle:
         #Turn left
-        leftSpeed  -= 0.05 * MAX_SPEED
-        rightSpeed += 0.05 * MAX_SPEED
-
+        leftSpeed  -= OFFSET * MAX_SPEED
+        rightSpeed += OFFSET * MAX_SPEED
+    elif left_obstacle:
+        # slight right
+        leftSpeed += OFFSET * MAX_SPEED
+        rightSpeed -= OFFSET * MAX_SPEED
 
     #Calculate current position
     #SENSITIVE TO GETTING STUCK, LEADS TO DRIFT
@@ -276,7 +289,7 @@ while robot.step(TIME_STEP) != -1:
         #touch sensor activated
         print("found target!")
         flags +=1
-        if flags >= 5:
+        if flags >= 10:
             sys.exit(0)
 
     #Write actuators inputs
