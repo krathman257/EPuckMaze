@@ -13,13 +13,14 @@ class Optimizer:
         if self.doesFileExist():
             temp = self.file.readlines()
 
+            
             #Read in each line as a list of floats
             for l in temp:
                 d = l.strip('\n').split(',')
-                for i in range(0, len(d)):
+                for i in range(0, len(d)-1):
                     d[i] = float(d[i])
                 self.data.append(d)
-
+            oLen = len(self.data)
             #Check each point (from start) against
             #each point (from end) for loops
             i = 0
@@ -33,7 +34,7 @@ class Optimizer:
                         j -= 1
                 i += 1
                 j = len(self.data)-1
-            print('File Opened and Processed')
+            print('File Opened and Processed, ',oLen,"->",len(self.data))
 
     #Open file
     def read_in(self):
@@ -49,7 +50,7 @@ class Optimizer:
         self.counter += 1
         if self.counter == len(self.data):
             return False
-        return [float(self.data[self.counter][2]), float(self.data[self.counter][3])]
+        return [float(self.data[self.counter][2]), float(self.data[self.counter][3]), self.data[self.counter][4]]
 
     #Check if there's a file
     def doesFileExist(self):
@@ -62,18 +63,20 @@ class Optimizer:
         p2 = self.data[end][:2]
         x = p1[0] - p2[0]
         y = p1[1] - p2[1]
-        dist = math.sqrt(abs((x * x) - (y * y)))
+        dist = math.sqrt(abs((x * x) + (y * y)))
         if dist < 5:
-            #print("Loop Detected: ",start,", ",end)
-            self.data = self.data[:start]+self.data[end:]
+            print("Loop Detected: ",start,", ",end)
+            half1 = self.data[:start]
+            half2 = self.data[end:]
+            self.data = half1 + half2
             return False
         else:
             return True
 
     #Append a line of data to the file
-    def writeData(self, pos, l, r):
+    def writeData(self, pos, l, r, rot):
         with open(self.filePath, "a") as f:
-            f.write("%.4f,%.4f,%.3f,%.3f\n" % (pos[0], pos[1], l, r))
+            f.write("%.4f,%.4f,%.3f,%.3f,%s\n" % (pos[0], pos[1], l, r, rot))
             f.close()
 
 #Time in [ms] of a simulation step
@@ -82,6 +85,8 @@ TIME_STEP = 64
 MAX_SPEED = 6.28
 
 DETECT_VAL = 100.0
+
+TURN_DELAY = 15
 
 #Rotate 2D vector
 def rotate(vector, angle):
@@ -132,6 +137,12 @@ def getComVal(c):
         else:
             return('W')
 
+def turnTarget(rob, c, l, r, target):
+    for d in range(-1, 3):
+        if getTurnDirection(getComVal(c), d) == target:
+            turn(rob, c, l, r, d)
+            break
+
 #Loop to turn in x direction
 def turn(rob, c, l, r, direction):
     angle = getAngle(c)
@@ -139,8 +150,12 @@ def turn(rob, c, l, r, direction):
     while rob.step(TIME_STEP) != -1 and not isStraight(angle, targetComp):
         angle = getAngle(c)
         if not isStraight(angle, targetComp):
-            l.setVelocity(-1 * MAX_SPEED)
-            r.setVelocity(MAX_SPEED)
+            if direction < 0:
+                l.setVelocity(-1 * MAX_SPEED)
+                r.setVelocity(MAX_SPEED)
+            else:
+                l.setVelocity(MAX_SPEED)
+                r.setVelocity(-1 * MAX_SPEED)
 
 #Create Optimizer instance
 opt = Optimizer()
@@ -187,7 +202,7 @@ rightMotor.setVelocity(0.0)
 last_left = 60000
 psValues = []
 
-turnDelay = 15
+turnDelay = TURN_DELAY
 
 #Feedback loop: step simulation until receiving an exit event
 while robot.step(TIME_STEP) != -1:
@@ -205,23 +220,27 @@ while robot.step(TIME_STEP) != -1:
     right_path = psValues[2] < 63.0
     left_path = psValues[5] < 63.0
 
-    if  (psValues[5] < DETECT_VAL and psValues[6] < DETECT_VAL):
-        #if a gap is detected on the left,
-        #then turn left
-        #detection is too immediate
-        #TO-DO: add some forward statement to offset the turn
+    if write:
+        if  (psValues[5] < DETECT_VAL and psValues[6] < DETECT_VAL):
+            #if a gap is detected on the left,
+            #then turn left
+            #detection is too immediate
+            #TO-DO: add some forward statement to offset the turn
 
-        turnDelay -= 1
-        if turnDelay == 0:
-            turn(robot, com, leftMotor, rightMotor, -1)
-            turnDelay = 10
-    if front_obstacle:
-        if not right_obstacle:
-            #right turn
-            turn(robot, com, leftMotor, rightMotor, 1)
-        else:
-            #180
-            turn(robot, com, leftMotor, rightMotor, 2)
+            turnDelay -= 1
+            if turnDelay == 0:
+                turn(robot, com, leftMotor, rightMotor, -1)
+                turnDelay = TURN_DELAY
+        if front_obstacle:
+            if not psValues[5] > DETECT_VAL:
+                #left turn
+                turn(robot, com, leftMotor, rightMotor, -1)
+            if not psValues[2] > DETECT_VAL:
+                #right turn
+                turn(robot, com, leftMotor, rightMotor, 1)
+            else:
+                #180
+                turn(robot, com, leftMotor, rightMotor, 2)
 
 
     #Initialize motor speeds at 50% of MAX_SPEED.
@@ -246,6 +265,7 @@ while robot.step(TIME_STEP) != -1:
     #Calculate current position
     #SENSITIVE TO GETTING STUCK, LEADS TO DRIFT
     if write:
+        #print("Writing")
         delta = acc.getValues()
         delta = [delta[0], delta[2]]
         angle = getAngle(com)
@@ -253,7 +273,7 @@ while robot.step(TIME_STEP) != -1:
             delta = rotate(delta, angle)
             currentPos[0] += (delta[0]/10)
             currentPos[1] += (delta[1]/10)
-            opt.writeData(currentPos, leftSpeed, rightSpeed)
+            opt.writeData(currentPos, leftSpeed, rightSpeed, getComVal(com))
     #detect trophy
     #trophy is a cone so will be touched by touch sensor but not distance sensors
     if(touch.getValue() ==1.0 and not front_obstacle):
@@ -263,13 +283,16 @@ while robot.step(TIME_STEP) != -1:
 
     #Write actuators inputs
     #If writing to file,
-    #if write:
-    leftMotor.setVelocity(leftSpeed)
-    rightMotor.setVelocity(rightSpeed)
+    if write:
+        leftMotor.setVelocity(leftSpeed)
+        rightMotor.setVelocity(rightSpeed)
     #If reading from file,
-    #else:
-    #    motorValues = opt.getNextMotorValues()
-    #    if motorValues == False:
-    #        sys.exit("Ran out of motor values")
-    #    leftMotor.setVelocity(motorValues[0])
-    #    rightMotor.setVelocity(motorValues[1])
+    else:
+        motorValues = opt.getNextMotorValues()
+        if motorValues == False:
+            sys.exit("Ran out of motor values")
+        if not getComVal(com) == motorValues[2]:
+            print("Fixing turn: ",motorValues[2])
+            turnTarget(robot, com, leftMotor, rightMotor, motorValues[2])
+        leftMotor.setVelocity(motorValues[0])
+        rightMotor.setVelocity(motorValues[1])
