@@ -222,6 +222,19 @@ while robot.step(TIME_STEP) != -1:
     left_path = psValues[5] < 63.0
 
     if write:
+        if front_obstacle and left_obstacle and psValues[2] > DETECT_VAL:
+            turn(robot, com, leftMotor, rightMotor, 2) #180
+        elif front_obstacle:
+            if not psValues[2] > DETECT_VAL: #no obstacle on immediate right
+                #right turn
+                turn(robot, com, leftMotor, rightMotor, 1)
+            elif not psValues[5] > DETECT_VAL: #no obstacle on immediate left
+                #left turn
+                turn(robot, com, leftMotor, rightMotor, -1)
+
+            else:
+                #180
+                turn(robot, com, leftMotor, rightMotor, 2)
         if  (psValues[5] < DETECT_VAL and psValues[6] < DETECT_VAL):
             #if a gap is detected on the left,
             #then turn left
@@ -230,16 +243,7 @@ while robot.step(TIME_STEP) != -1:
             if turnDelay == 0:
                 turn(robot, com, leftMotor, rightMotor, -1)
                 turnDelay = TURN_DELAY
-        if front_obstacle:
-            if not psValues[5] > DETECT_VAL: #no obstacle on immediate left
-                #left turn
-                turn(robot, com, leftMotor, rightMotor, -1)
-            elif not psValues[2] > DETECT_VAL: #no obstacle on immediate right
-                #right turn
-                turn(robot, com, leftMotor, rightMotor, 1)
-            else:
-                #180
-                turn(robot, com, leftMotor, rightMotor, 2)
+
 
 
     #Initialize motor speeds at 50% of MAX_SPEED.
@@ -268,12 +272,12 @@ while robot.step(TIME_STEP) != -1:
             opt.writeData(currentPos, leftSpeed, rightSpeed, getComVal(com))
     #detect trophy
     #trophy is a cone so will be touched by touch sensor but not distance sensors
-    if(touch.getValue() ==1.0 and not (psValues[7] > DETECT_VAL or psValues[0] > DETECT_VAL)):
+    if(touch.getValue() ==1.0 and not (psValues[0] > DETECT_VAL)):
         #touch sensor activated
         print("found target!")
         flags +=1
-        if flags >= 10:
-            sys.exit("target confirmed. exiting...")
+        if flags >= 5:
+            sys.exit(0)
 
     #Write actuators inputs
     #If writing to file,
