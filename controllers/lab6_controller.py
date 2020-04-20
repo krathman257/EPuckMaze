@@ -201,11 +201,12 @@ rightMotor.setVelocity(0.0)
 
 last_left = 60000
 psValues = []
-
-turnDelay = TURN_DELAY
+count = 0
+turnDelay =TURN_DELAY
 
 #Feedback loop: step simulation until receiving an exit event
 while robot.step(TIME_STEP) != -1:
+
     #Read sensors outputs
     oldValues = psValues
     psValues = []
@@ -247,19 +248,12 @@ while robot.step(TIME_STEP) != -1:
     leftSpeed  = 0.5 * MAX_SPEED
     rightSpeed = 0.5 * MAX_SPEED
 
-
-    #forward
-    #Modify speeds according to obstacles
-    # if left_obstacle:
-    #     #Turn right
-    #     leftSpeed  += 0.05 * MAX_SPEED
-    #     rightSpeed -= 0.05 * MAX_SPEED
-    #
-    #
-    # elif right_obstacle:
-    #     #Turn left
-    #     leftSpeed  -= 0.05 * MAX_SPEED
-    #     rightSpeed += 0.05 * MAX_SPEED
+    #force robot to tend toward left
+    #hug left wall
+    if not left_obstacle:
+        #Turn left
+        leftSpeed  -= 0.05 * MAX_SPEED
+        rightSpeed += 0.05 * MAX_SPEED
 
 
     #Calculate current position
@@ -276,7 +270,7 @@ while robot.step(TIME_STEP) != -1:
             opt.writeData(currentPos, leftSpeed, rightSpeed, getComVal(com))
     #detect trophy
     #trophy is a cone so will be touched by touch sensor but not distance sensors
-    if(touch.getValue() ==1.0 and not front_obstacle):
+    if(touch.getValue() ==1.0 and not (psValues[7] > DETECT_VAL or psValues[0] > DETECT_VAL)):
         #touch sensor activated
         print("found target!")
         #sys.exit("target found")
