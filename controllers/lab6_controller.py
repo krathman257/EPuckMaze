@@ -139,8 +139,8 @@ def turn(rob, c, l, r, direction):
     while rob.step(TIME_STEP) != -1 and not isStraight(angle, targetComp):
         angle = getAngle(c)
         if not isStraight(angle, targetComp):
-            l.setVelocity(MAX_SPEED)
-            r.setVelocity(-1 * MAX_SPEED)
+            l.setVelocity(-1 * MAX_SPEED)
+            r.setVelocity(MAX_SPEED)
 
 #Create Optimizer instance
 opt = Optimizer()
@@ -186,6 +186,9 @@ rightMotor.setVelocity(0.0)
 
 last_left = 60000
 psValues = []
+
+turnDelay = 15
+
 #Feedback loop: step simulation until receiving an exit event
 while robot.step(TIME_STEP) != -1:
     #Read sensors outputs
@@ -207,7 +210,11 @@ while robot.step(TIME_STEP) != -1:
         #then turn left
         #detection is too immediate
         #TO-DO: add some forward statement to offset the turn
-        turn(robot, com, leftMotor, rightMotor, 3)
+
+        turnDelay -= 1
+        if turnDelay == 0:
+            turn(robot, com, leftMotor, rightMotor, -1)
+            turnDelay = 10
     if front_obstacle:
         if not right_obstacle:
             #right turn
@@ -256,13 +263,13 @@ while robot.step(TIME_STEP) != -1:
 
     #Write actuators inputs
     #If writing to file,
-    if write:
-        leftMotor.setVelocity(leftSpeed)
-        rightMotor.setVelocity(rightSpeed)
+    #if write:
+    leftMotor.setVelocity(leftSpeed)
+    rightMotor.setVelocity(rightSpeed)
     #If reading from file,
-    else:
-        motorValues = opt.getNextMotorValues()
-        if motorValues == False:
-            sys.exit("Ran out of motor values")
-        leftMotor.setVelocity(motorValues[0])
-        rightMotor.setVelocity(motorValues[1])
+    #else:
+    #    motorValues = opt.getNextMotorValues()
+    #    if motorValues == False:
+    #        sys.exit("Ran out of motor values")
+    #    leftMotor.setVelocity(motorValues[0])
+    #    rightMotor.setVelocity(motorValues[1])
