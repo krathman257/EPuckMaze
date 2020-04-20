@@ -3,7 +3,7 @@ WorldInfo {
 }
 Viewpoint {
   orientation -0.9230899524979904 -0.36877365543755203 -0.10913721021028155 0.6721643995796241
-  position -0.578133764135955 1.4907700471927177 2.4937911527522583
+  position -0.26903324137723 0.6223935044303176 1.3255296531038816
 }
 TexturedBackground {
 }
@@ -286,7 +286,7 @@ DEF Trpphy Solid {
   }
 }
 Robot {
-  translation -0.05 0 0.6
+  translation -0.08 0 0.6
   children [
     TouchSensor {
       translation 0 0.01 -0.03

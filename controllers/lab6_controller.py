@@ -184,14 +184,16 @@ rightMotor.setPosition(float('inf'))
 leftMotor.setVelocity(0.0)
 rightMotor.setVelocity(0.0)
 
-
+last_left = 60000
+psValues = []
 #Feedback loop: step simulation until receiving an exit event
 while robot.step(TIME_STEP) != -1:
     #Read sensors outputs
+    oldValues = psValues
     psValues = []
     for i in range(8):
         psValues.append(ps[i].getValue())
-    
+
     #Detect obstacles
     right_obstacle = psValues[0] > DETECT_VAL or psValues[1] > DETECT_VAL or psValues[2] > DETECT_VAL
     left_obstacle = psValues[5] > DETECT_VAL or psValues[6] > DETECT_VAL or psValues[7] > DETECT_VAL
@@ -200,33 +202,39 @@ while robot.step(TIME_STEP) != -1:
     right_path = psValues[2] < 63.0
     left_path = psValues[5] < 63.0
 
+    if  (psValues[5] < DETECT_VAL and psValues[6] < DETECT_VAL):
+        #if a gap is detected on the left,
+        #then turn left
+        #detection is too immediate
+        #TO-DO: add some forward statement to offset the turn
+        turn(robot, com, leftMotor, rightMotor, 3)
     if front_obstacle:
-        turn(robot, com, leftMotor, rightMotor, 2)
+        if not right_obstacle:
+            #right turn
+            turn(robot, com, leftMotor, rightMotor, 1)
+        else:
+            #180
+            turn(robot, com, leftMotor, rightMotor, 2)
+
 
     #Initialize motor speeds at 50% of MAX_SPEED.
     leftSpeed  = 0.5 * MAX_SPEED
     rightSpeed = 0.5 * MAX_SPEED
 
 
-
+    #forward
     #Modify speeds according to obstacles
-    if left_obstacle:
+    # if left_obstacle:
+    #     #Turn right
+    #     leftSpeed  += 0.05 * MAX_SPEED
+    #     rightSpeed -= 0.05 * MAX_SPEED
+    #
+    #
+    # elif right_obstacle:
+    #     #Turn left
+    #     leftSpeed  -= 0.05 * MAX_SPEED
+    #     rightSpeed += 0.05 * MAX_SPEED
 
-        #Turn right
-        leftSpeed  += 0.05 * MAX_SPEED
-        rightSpeed -= 0.05 * MAX_SPEED
-
-
-    elif right_obstacle:
-
-        #Turn left
-        leftSpeed  -= 0.05 * MAX_SPEED
-        rightSpeed += 0.05 * MAX_SPEED
-
-    if not left_obstacle:
-        #sharp turn
-        rightSpeed = MAX_SPEED
-        leftSpeed = 0.0
 
     #Calculate current position
     #SENSITIVE TO GETTING STUCK, LEADS TO DRIFT
@@ -241,9 +249,10 @@ while robot.step(TIME_STEP) != -1:
             opt.writeData(currentPos, leftSpeed, rightSpeed)
     #detect trophy
     #trophy is a cone so will be touched by touch sensor but not distance sensors
-    if(touch.getValue() ==1.0):
+    if(touch.getValue() ==1.0 and not front_obstacle):
         #touch sensor activated
-        sys.exit("found target!")
+        print("found target!")
+        #sys.exit("target found")
 
     #Write actuators inputs
     #If writing to file,
