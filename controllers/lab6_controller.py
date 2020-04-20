@@ -201,7 +201,7 @@ rightMotor.setVelocity(0.0)
 
 last_left = 60000
 psValues = []
-count = 0
+flags = 0
 turnDelay =TURN_DELAY
 
 #Feedback loop: step simulation until receiving an exit event
@@ -225,18 +225,16 @@ while robot.step(TIME_STEP) != -1:
         if  (psValues[5] < DETECT_VAL and psValues[6] < DETECT_VAL):
             #if a gap is detected on the left,
             #then turn left
-            #detection is too immediate
-            #TO-DO: add some forward statement to offset the turn
 
             turnDelay -= 1
             if turnDelay == 0:
                 turn(robot, com, leftMotor, rightMotor, -1)
                 turnDelay = TURN_DELAY
         if front_obstacle:
-            if not psValues[5] > DETECT_VAL:
+            if not psValues[5] > DETECT_VAL: #no obstacle on immediate left
                 #left turn
                 turn(robot, com, leftMotor, rightMotor, -1)
-            if not psValues[2] > DETECT_VAL:
+            elif not psValues[2] > DETECT_VAL: #no obstacle on immediate right
                 #right turn
                 turn(robot, com, leftMotor, rightMotor, 1)
             else:
@@ -273,7 +271,9 @@ while robot.step(TIME_STEP) != -1:
     if(touch.getValue() ==1.0 and not (psValues[7] > DETECT_VAL or psValues[0] > DETECT_VAL)):
         #touch sensor activated
         print("found target!")
-        #sys.exit("target found")
+        flags +=1
+        if flags >= 10:
+            sys.exit("target confirmed. exiting...")
 
     #Write actuators inputs
     #If writing to file,
