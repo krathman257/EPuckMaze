@@ -86,7 +86,7 @@ MAX_SPEED = 6.28
 
 DETECT_VAL = 100.0
 
-TURN_DELAY = 30
+TURN_DELAY = 15
 
 OFFSET = 0.05
 
@@ -248,13 +248,15 @@ while robot.step(TIME_STEP) != -1:
                 turn(robot, com, leftMotor, rightMotor, -1)
                 turnDelay = TURN_DELAY
         if  (psValues[5] < DETECT_VAL and psValues[6] < DETECT_VAL and psValues[7] < DETECT_VAL):
-            #if a gap is detected on the left,
-            #then turn left
+            #if a gap is definetly detected on the left,
+            #then turn left but faster
 
             turnDelay -= 1
             if turnDelay == 0:
                 turn(robot, com, leftMotor, rightMotor, -1)
                 turnDelay = TURN_DELAY
+        if (psValues[0] > DETECT_VAL and psValues[1] > DETECT_VAL): #make a right turn if blocked on right
+            turn(robot, com, leftMotor, rightMotor, 1 )
 
 
 
@@ -268,10 +270,6 @@ while robot.step(TIME_STEP) != -1:
         #Turn left
         leftSpeed  -= OFFSET * MAX_SPEED
         rightSpeed += OFFSET * MAX_SPEED
-    # elif left_obstacle:
-    #     # slight right
-    #     leftSpeed += OFFSET * MAX_SPEED
-    #     rightSpeed -= OFFSET * MAX_SPEED
 
     #Calculate current position
     #SENSITIVE TO GETTING STUCK, LEADS TO DRIFT
