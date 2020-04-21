@@ -26,7 +26,7 @@ class Optimizer:
             i = 0
             j = len(self.data) - 1
             while i < len(self.data)-1:
-                while j > i+5:
+                while j > i+10:
                     if not self.checkPoints(i, j):
                         i = 0
                         j = len(self.data)-1
