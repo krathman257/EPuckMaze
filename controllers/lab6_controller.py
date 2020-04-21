@@ -204,7 +204,9 @@ rightMotor.setVelocity(0.0)
 last_left = 60000
 psValues = []
 flags = 0
+first = True
 turnDelay =TURN_DELAY
+
 
 #Feedback loop: step simulation until receiving an exit event
 while robot.step(TIME_STEP) != -1:
@@ -266,10 +268,10 @@ while robot.step(TIME_STEP) != -1:
         #Turn left
         leftSpeed  -= OFFSET * MAX_SPEED
         rightSpeed += OFFSET * MAX_SPEED
-    elif left_obstacle:
-        # slight right
-        leftSpeed += OFFSET * MAX_SPEED
-        rightSpeed -= OFFSET * MAX_SPEED
+    # elif left_obstacle:
+    #     # slight right
+    #     leftSpeed += OFFSET * MAX_SPEED
+    #     rightSpeed -= OFFSET * MAX_SPEED
 
     #Calculate current position
     #SENSITIVE TO GETTING STUCK, LEADS TO DRIFT
